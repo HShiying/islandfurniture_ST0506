@@ -207,52 +207,50 @@ var memberDB = {
                 }
             });
         });
-    },
-    registerMember: function (email, password, hostName) {
-        return new Promise( ( resolve, reject ) => {
-            var conn = db.getConnection();
-            conn.connect(function (err) {
+    },registerMember: function (email, password, hostName) {
+    return new Promise((resolve, reject) => {
+        var conn = db.getConnection();
+        conn.connect(function (err) {
+            if (err) {
+                conn.end();
+                return reject(err);
+            }
+
+            bcrypt.hash(password, 5, function (err, hash) {
                 if (err) {
-                    console.log(err);
                     conn.end();
                     return reject(err);
                 }
-                else {
-                    bcrypt.hash(password, 5, function(err, hash) {
-                        var activationCode = generateRandomNumber(40);
-                        var passwordReset = generateRandomNumber(40);
-                        var sqlArgs = [activationCode, email, new Date(), hash, passwordReset];
-                        var sql = 'INSERT INTO memberentity(ACTIVATIONCODE,EMAIL,JOINDATE,PASSWORDHASH,PASSWORDRESET,LOYALTYTIER_ID)'
-                            + 'values(?,?,?,?,?,15)';
-                        conn.query(sql, sqlArgs, function (err, result) {
-                            if (err) {
-                                conn.end();
-                                return reject(err);
-                            } else {
-                                if(result.affectedRows > 0) {
-                                    var mailOptions = {
-                                        from: 'islandfurnituresep@gmail.com',
-                                        to: email,
-                                        subject: 'Island Furniture Member Account Activation',
-                                        text: 'Greetings from Island Furniture... \n\n'
-                                            + 'Click on the link below to activate your Island Furniture account: \n\n'
-                                            + 'http://' + hostName + '/activateMemberAccount.html?email=' + email + '&activateCode=' + activationCode
-                                    };
-                                    emailer.sendMail(mailOptions, function(error, info){
-                                        if (error) {
-                                            console.log(error);
-                                        }
-                                    });
-                                    conn.end();
-                                    return resolve({success:true});
-                                }
-                            }
-                        });
-                    });
-                }
+
+                var activationCode = generateRandomNumber(40);
+                var passwordReset = generateRandomNumber(40);
+// After inserting the member, also activate the account immediately
+                var sql =
+                    'INSERT INTO memberentity(ACTIVATIONCODE,EMAIL,JOINDATE,PASSWORDHASH,PASSWORDRESET,LOYALTYTIER_ID) ' +
+                    'VALUES (?,?,?,?,?,15)';
+
+                var sqlArgs = [activationCode, email, new Date(), hash, passwordReset];
+
+                conn.query(sql, sqlArgs, function (err, result) {
+                    if (err) {
+                        conn.end();
+                        return reject(err);
+                    }
+
+                    conn.query(
+                        'UPDATE memberentity SET ACCOUNTACTIVATIONSTATUS=1 WHERE EMAIL=?',
+                        [email],
+                        function () {
+                            conn.end();
+                            resolve({ success: true });
+                        }
+                    );
+                });
             });
         });
-    },
+    });
+},
+
     getMemberActivateCode: function (email) {
         return new Promise( ( resolve, reject ) => {
             var conn = db.getConnection();
