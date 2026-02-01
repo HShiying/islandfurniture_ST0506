@@ -15,7 +15,7 @@ app.get('/api/memberAuthState', middleware.checkToken, function (req, res) {
         });
 });
 
-app.get('/api/getMember', function (req, res) {
+app.get('/api/getMember', middleware.checkToken, function (req, res) {
     var email = req.query.email;
     member.getMember(email)
         .then((result) => {

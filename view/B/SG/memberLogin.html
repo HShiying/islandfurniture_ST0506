@@ -45,22 +45,27 @@
                                 if (member.accountActivationStatus == 1) {
                                     sessionStorage.setItem("token", data.token);
                                     //Get Member
-                                    fetch(new Request('/api/getMember?email=' + email,
-                                    {
-                                        method: 'GET'
-                                    })).then(function (response) {
-                                        return response.json();
-                                    }).then(function (member) {
-                                        //store member's detail in session
-                                        sessionStorage.setItem('memberEmail', email);
-                                        sessionStorage.setItem('memberName', member.name);
-                                        sessionStorage.setItem('member', JSON.stringify(member));
+// FIXED: attach token
+fetch(new Request('/api/getMember?email=' + email,
+{
+    method: 'GET',
+    headers: {
+        'Authorization': 'Bearer ' + data.token  // ✅ ADDED
+    }
+})).then(function (response) {
+    return response.json();
+})
+.then(function (member) {
+    //store member's detail in session
+    sessionStorage.setItem('memberEmail', email);
+    sessionStorage.setItem('memberName', member.name);  // ✅ Now works
+    sessionStorage.setItem('member', JSON.stringify(member));
 
-                                        //redirect to memberProfile.html
-                                        window.location.href = "/B/" + countryPrefix + "/memberProfile.html";
-                                    }).catch(function(error) {
-                                        console.log(error);
-                                    });
+    //redirect to memberProfile.html
+    window.location.href = "/B/" + countryPrefix + "/memberProfile.html";
+}).catch(function(error) {
+    console.log(error);
+});
                                 }
                                 //if account is not authenticated
                                 else {
