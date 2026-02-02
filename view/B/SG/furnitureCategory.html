@@ -79,7 +79,7 @@
                     window.location.href = url + '?cat=' + encodeURIComponent(cat) + '&errMsg=Item not added to cart, not enough quantity available.';
                 } else {
                     var allOk = true;
-                    var shoppingCart = JSON.parse(sessionStorage.getItem('shoppingCart'));
+                    var shoppingCart = JSON.parse(localStorage.getItem('shoppingCart'));
                     if (shoppingCart == null || shoppingCart == '') {
                         shoppingCart = [];
                         shoppingCart.push({ id: id, sku: sku, price: price, name: name, imgURL: imageURL, quantity: 1 });
@@ -103,7 +103,7 @@
                         }
                     }
                     if (allOk) {
-                        sessionStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+                        localStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
                         var url = window.location.origin + window.location.pathname;
                         window.location.href = url + '?cat=' + encodeURIComponent(cat) + '&goodMsg=Successfully added!';
                     }

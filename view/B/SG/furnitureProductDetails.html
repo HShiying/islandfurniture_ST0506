@@ -1,40 +1,45 @@
 a
 <script src="../checkCountry.js"></script>
 <html>
-<script src="../../header.js"></script>
+    <script src="../../header.js"></script>
+    <body>
+        <script>
+            var countryPrefix = localStorage.getItem('urlPrefix');
 
-<body>
-    <script>
-        var countryPrefix = localStorage.getItem('urlPrefix');
-        //get sku from query parameter
+        // get sku from query parameter
         var currentUrl = new URL(window.location.href);
         var sku = currentUrl.searchParams.get("sku");
+
         var memberEmail = sessionStorage.getItem('memberEmail');
-        if (sku == null || sku == '') {
+
+        if (sku == null || sku === '') {
             window.location.href = '/B/' + countryPrefix + '/index.html';
         }
+
         var countryId = localStorage.getItem('countryId');
-        fetch(new Request('/api/getFurnitureBySku?sku=' + sku + '&countryId=' + countryId,
-            {
-                method: 'GET'
-            })).then(function (response) {
-                return response.json();
-            }).then(function (furniture) {
-                // Set furniture details
-                document.getElementById("imgFurniture").setAttribute('src', furniture.imageURL);
-                document.getElementById("furnitureName").innerText = furniture.name;
-                document.getElementById("price").innerText = "$" + furniture.price;
-                document.getElementById("description").innerText = furniture.description;
-                //added codes-------------------------------------------------------------------------
-                document.getElementById("height").innerText =
-                    furniture.height ? furniture.height + " cm" : "N/A";
 
-                document.getElementById("width").innerText =
-                    furniture.width ? furniture.width + " cm" : "N/A";
+        fetch(new Request('/api/getFurnitureBySku?sku=' + sku + '&countryId=' + countryId, {
+            method: 'GET'
+        }))
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (furniture) {
+            // Set furniture details
+            document.getElementById("imgFurniture").setAttribute('src', furniture.imageURL);
+            document.getElementById("furnitureName").innerText = furniture.name;
+            document.getElementById("price").innerText = "$" + furniture.price;
+            document.getElementById("description").innerText = furniture.description;
 
-                document.getElementById("length").innerText =
-                    furniture.length ? furniture.length + " cm" : "N/A";
-                //added codes-------------------------------------------------------------------------
+            // Furniture dimensions
+            document.getElementById("height").innerText =
+                furniture.height ? furniture.height + " cm" : "N/A";
+
+            document.getElementById("width").innerText =
+                furniture.width ? furniture.width + " cm" : "N/A";
+
+            document.getElementById("length").innerText =
+                furniture.length ? furniture.length + " cm" : "N/A";
                 if (memberEmail != null && memberEmail != '') {
                     document.getElementById("addToCartBtn").innerHTML = '<button class="btn btn-primary" onclick="addToCart(\''
                         + furniture.sku + '\',\'' + furniture.id + '\',' + furniture.price + ',\'' + furniture.name + '\',\''
@@ -88,7 +93,7 @@ a
                     }
                     else {
                         var allOk = true;
-                        var shoppingCart = JSON.parse(sessionStorage.getItem('shoppingCart'));
+                        var shoppingCart = JSON.parse(localStorage.getItem('shoppingCart'));
                         //if shopping cart is empty
                         if (shoppingCart == null || shoppingCart == '') {
                             shoppingCart = [];
@@ -132,7 +137,7 @@ a
                             }
                         }
                         if (allOk) {
-                            sessionStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+                            localStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
                             var url = window.location.origin + window.location.pathname;
                             window.location.href = url + '?sku=' + sku + '&goodMsg=Successfully added!';
                         }

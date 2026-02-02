@@ -4,353 +4,402 @@
 
 <body>
     <script>
-        var authToken = null;
+        var authToken = sessionStorage.getItem('token');
         var countryPrefix = localStorage.getItem('urlPrefix');
         var member = null;
 
-        //get token from session
-        authToken = sessionStorage.getItem('token');
-        if (authToken == null || authToken == "") {
+        // Redirect if no auth token
+        if (!authToken) {
             window.location.href = '/B/' + countryPrefix + '/memberLogin.html';
         }
 
-        fetch(new Request('/api/checkToken',
-            {
-                method: 'GET',
-                headers: {
-                    Authorization: 'Bearer ' + authToken
-                }
-            })).then(function (response) {
-                return response.json();
-            }).then(function (data) {
+        // Check token validity
+        fetch('/api/checkToken', {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + authToken }
+        })
+            .then(res => res.json())
+            .then(data => {
                 if (!data.success) {
                     window.location.href = '/B/' + countryPrefix + '/memberLogin.html';
                 }
-            }).catch(function (error) {
-                console.log(error);
-            });
+            })
+            .catch(console.log);
 
+        // -------------------- DOM Ready -------------------- //
         document.addEventListener('DOMContentLoaded', function () {
             var memberEmail = sessionStorage.getItem('memberEmail');
 
-            // ✅ FETCH MEMBER DATA FROM API
-            fetch(new Request('/api/getMember?email=' + memberEmail,
-                {
-                    method: 'GET',
-                    headers: {
-                        Authorization: 'Bearer ' + authToken
-                    }
-                })).then(function (response) {
-                    return response.json();
-                }).then(function (data) {
+            // Fetch member data
+            fetch('/api/getMember?email=' + memberEmail, {
+                method: 'GET',
+                headers: { Authorization: 'Bearer ' + authToken }
+            })
+                .then(res => res.json())
+                .then(data => {
                     member = data;
-
-                    // ✅ POPULATE ALL FORM FIELDS
-                    document.getElementById("name").value = member.name || '';
-                    document.getElementById("email").value = member.email || '';
-                    document.getElementById("phone").value = member.phone || '';
-                    document.getElementById("country").value = member.city || '';
-                    document.getElementById("address").value = member.address || '';
-                    document.getElementById("age").value = member.age || '';
-                    document.getElementById("income").value = member.income || '';
-
-                    // Set security question
-                    if (member.securityQuestion) {
-                        document.getElementById("securityQuestion").value = member.securityQuestion;
-                    }
-                    if (member.securityAnswer) {
-                        document.getElementById("securityAnswer").value = member.securityAnswer || '';
-                    }
-
-                    // Set service level agreement checkbox
-                    if (member.sla == 1) {
-                        document.getElementById("serviceLevelAgreement").checked = true;
-                    }
-
-                    // Now fetch bought items
+                    populateProfileForm(member);
                     loadBoughtItems();
+                    populateLoyaltyProgram(member);
+                })
+                .catch(console.log);
+        });
 
-                }).catch(function (error) {
-                    console.log(error);
-                });
-        }, false);
+        // -------------------- Functions -------------------- //
 
-        function loadBoughtItems() {
-            //Get Bought Items
-            fetch(new Request('/api/getBoughtItem/' + member.id,
-                {
-                    method: 'GET',
-                    headers: {
-                        Authorization: 'Bearer ' + authToken
-                    }
-                })).then(function (response) {
-                    return response.json();
-                }).then(function (boughtItem) {
-                    if (boughtItem == null || boughtItem == '') { //if member do not have any bought items
-                        document.getElementById("salesHistoryTab").innerHTML = '<h5 class="center">You do not have any sales history.</h5>';
-                    }
-                    else {
-                        var htmlTxt = '';
-                        var orderIdList = [];
-                        var overallPrice = 0;
-                        var finalPrice = 0;
-                        //get all order IDs
-                        for (i = 0; i < boughtItem.length; i++) {
-                            orderIdList[i] = boughtItem[i].id;
-                        }
-                        //unduplicate order IDs
-                        orderIdList = [...new Set(orderIdList)];
-                        var temp;
-                        var size = orderIdList.length;
-                        //sort order ID in ascending order
-                        for (i = 0; i < size - 1; i++) {
-                            for (j = 0; j < size - i - 1; j++) {
-                                if (orderIdList[j] > orderIdList[j + 1]) {
-                                    temp = orderIdList[j];
-                                    orderIdList[j] = orderIdList[j + 1];
-                                    orderIdList[j + 1] = temp;
-                                }
-                            }
-                        }
-
-                        htmlTxt += '<h5>Order #' + (1) + '</h5>';
-                        var counter = 0;
-                        //get bought items by order ID
-                        for (j = 0; j < boughtItem.length; j++) {
-
-                            if (boughtItem[j].id == orderIdList[0]) {
-                                var item = boughtItem[j];
-                                //display top level info
-                                if (counter == 0) {
-                                    let options = {
-                                        weekday: "long", year: "numeric", month: "long",
-                                        day: "numeric", hour: "2-digit", minute: "2-digit"
-                                    };
-                                    var datePurchased = (new Date(item.createddate)).toLocaleTimeString('en-us', options);
-                                    var deliveryDate = addWorkDays(new Date(item.createddate), 5);
-                                    htmlTxt += '\
-                                            <h6>Date Purchased: ' + datePurchased + '</h6>\
-                                            <h6>Estimated Delivery Date: ' + deliveryDate + '</h6>\
-                                            <h6 style="text-decoration:underline; font-weight:bold">Delivery Details:</h6>\
-                                            <h6>Address: ' + item.address + '</h6>\
-                                            <h6>Postal Code: ' + item.postalCode + '</h6>\
-                                            <h6>Name: ' + item.customerName + '</h6>\
-                                            <h6>Contact Number: ' + item.phone + '</h6>';
-                                    counter++;
-                                }
-                            }
-                        }
-                        //display table info
-                        htmlTxt += '\
-                                <div class="row">\
-                                    <div class="col-md-12">\
-                                        <div class="row featured-boxes">\
-                                            <div class="col-md-12">\
-                                                <div class="featured-box featured-box-secundary featured-box-cart">\
-                                                    <div class="box-content">\
-                                                        <table cellspacing="0" class="shop_table cart">\
-                                                            <thead>\
-                                                                <tr>\
-                                                                    <th class="product-thumbnail" style="width: 25%">Image</th>\
-                                                                    <th class="product-name" style="width: 38%">Product</th>\
-                                                                    <th class="product-price" style="width: 15%">Price</th>\
-                                                                    <th class="product-quantity" style="width: 15%">Quantity</th>\
-                                                                    <th class="product-subtotal" style="width: 15%">Subtotal</th>\
-                                                                </tr>\
-                                                            </thead>\
-                                                            <tbody>';
-                        for (y = 0; y < boughtItem.length; y++) {
-
-                            if (boughtItem[y].id == orderIdList[0]) {
-                                var product = boughtItem[y];
-                                htmlTxt += '\
-                                        <tr class="cart_table_item">\
-                                            <td class="product-thumbnail">\
-                                                <a href="/B/' + countryPrefix + '/furnitureProductDetails.html?sku=' + product.sku + '"><img width="100" height="100" alt="" class="img-responsive" src="' + product.imageUrl + '"></a>\
-                                            </td>\
-                                            <td class="product-name">\
-                                                <a class="productDetails" href="/B/' + countryPrefix + '/furnitureProductDetails.html?sku=' + product.sku + '">' + product.itemName + '</a>\
-                                            </td>\
-                                            <td class="product-price">\
-                                                $<span class="amount">' + product.retailPrice.toFixed(2) + '</span>\
-                                            </td>\
-                                            <td class="product-quantity">\
-                                                <span class="qty">' + product.quantity + '</span>\
-                                            </td>\
-                                            <td class="product-subtotal">\
-                                                $<span class="amount">' + product.retailPrice.toFixed(2) * product.quantity + '</span>\
-                                            </td>\
-                                        </tr>';
-                                finalPrice += product.retailPrice.toFixed(2) * product.quantity;
-                                overallPrice += product.retailPrice.toFixed(2) * product.quantity;
-                            }
-                        }
-                        htmlTxt += '\
-                                                                <tr>\
-                                                                    <td></td>\
-                                                                    <td></td>\
-                                                                    <td></td>\
-                                                                    <td class="product-subtotal" style="font-weight: bold; color: #cc3b33">Total:</td>\
-                                                                    <td class="product-subtotal" style="font-weight: bold">\
-                                                                        $<span class="amount" id="finalPrice" name="finalPrice">' + finalPrice + '</span>\
-                                                                    </td>\
-                                                                </tr>\
-                                                            </tbody>\
-                                                        </table>\
-                                                    </div>\
-                                                </div>\
-                                            </div>\
-                                        </div>\
-                                    </div>\
-                                </div>';
-                        finalPrice = 0;
-
-                        htmlTxt += '<h4 style="font-weight: bold; padding-left: 20px">Total Amount Spent: $' + overallPrice + '</h4>';
-                        document.getElementById("salesHistoryTab").innerHTML = htmlTxt;
-                    }
-                }).catch(function (error) {
-                    console.log(error);
-                });
+        function populateProfileForm(member) {
+            document.getElementById("name").value = member.name || '';
+            document.getElementById("email").value = member.email || '';
+            document.getElementById("phone").value = member.phone || '';
+            document.getElementById("country").value = member.city || '';
+            document.getElementById("address").value = member.address || '';
+            document.getElementById("age").value = member.age || '';
+            document.getElementById("income").value = member.income || '';
+            document.getElementById("securityQuestion").value = member.securityQuestion || '';
+            document.getElementById("securityAnswer").value = member.securityAnswer || '';
+            document.getElementById("serviceLevelAgreement").checked = member.sla == 1;
         }
 
-        function addWorkDays(startDate, days) {
-            var dow = startDate.getDay();
-            var daysToAdd = parseInt(days);
-            if (dow == 0)
-                daysToAdd++;
-            if (dow + daysToAdd >= 6) {
-                var remainingWorkDays = daysToAdd - (5 - dow);
-                daysToAdd += 2;
-                if (remainingWorkDays > 5) {
-                    daysToAdd += 2 * Math.floor(remainingWorkDays / 5);
-                    if (remainingWorkDays % 5 == 0)
-                        daysToAdd -= 2;
-                }
-            }
-            startDate.setDate(startDate.getDate() + daysToAdd);
-            var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            return startDate.toLocaleDateString("en-US", options);
+        // Reset form to original member data
+        function resetProfile() {
+            if (!member) return;
+            populateProfileForm(member);
+            document.getElementById("oldPassword").value = '';
+            document.getElementById("password").value = '';
+            document.getElementById("repassword").value = '';
         }
 
+        // Open PDPA window
+        function pdpaWindow() {
+            window.open("pdpa.html");
+        }
+
+        // Submit form handler
         async function submitForm() {
-                    var oldPassword = document.getElementById('oldPassword').value;
-                    var password = document.getElementById("password").value;
-                    var repassword = document.getElementById("repassword").value;
+            var oldPassword = document.getElementById('oldPassword').value;
+            var password = document.getElementById("password").value;
+            var repassword = document.getElementById("repassword").value;
 
-                    // Detect if user is trying to change password
-                    var changingPassword =
-                        oldPassword !== "" ||
-                        password !== "" ||
-                        repassword !== "";
+            var changingPassword = oldPassword || password || repassword;
 
-                    // ===============================
-                    // PASSWORD VALIDATION (ONLY IF USED)
-                    // ===============================
-                    if (changingPassword) {
+            // ---------------- Password Validation ---------------- //
+            if (changingPassword) {
+                if (!oldPassword) return alert("Please enter current password.");
+                if (!password) return alert("Please enter new password.");
+                if (!repassword) return alert("Please re-enter new password.");
+                if (password.length < 8) return alert("Passwords too short. At least 8 characters.");
+                if (password !== repassword) return alert("Passwords do not match.");
+                if (password === oldPassword) return alert("New password must be different from current password.");
 
-                        if (oldPassword === "") {
-                            alert("Please enter current password.");
-                            return;
-                        }
+                // Verify old password via API
+                const verifyResponse = await fetch('/api/verifyPassword', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken },
+                    body: JSON.stringify({ id: member.id, password: oldPassword })
+                });
+                const verifyResult = await verifyResponse.json();
+                if (!verifyResult.success) return alert("Old password is incorrect.");
+            }
 
-                        if (password === "") {
-                            alert("Please enter new password.");
-                            return;
-                        }
+            // Profile validation
+            if (!changingPassword && !document.getElementById("profileForm").checkValidity()) return;
 
-                        if (repassword === "") {
-                            alert("Please re-enter new password.");
-                            return;
-                        }
+            // Build payload
+            var data = {
+                email: document.getElementById("email").value,
+                name: document.getElementById("name").value,
+                phone: document.getElementById("phone").value,
+                country: document.getElementById("country").value,
+                address: document.getElementById("address").value,
+                securityQuestion: document.getElementById("securityQuestion").value,
+                securityAnswer: document.getElementById("securityAnswer").value,
+                sla: document.getElementById("serviceLevelAgreement").checked ? 1 : 0
+            };
+            var age = document.getElementById("age").value;
+            if (age) data.age = age;
+            var income = document.getElementById("income").value;
+            if (income) data.income = income;
+            if (changingPassword) data.password = password;
 
-                        if (password.length < 8) {
-                            alert("Passwords too short. At least 8 characters.");
-                            return;
-                        }
+            // Send update request
+            fetch('/api/updateMember', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken },
+                body: JSON.stringify(data)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    sessionStorage.setItem("member", JSON.stringify(data));
+                    sessionStorage.setItem("memberEmail", data.email);
+                    sessionStorage.setItem("memberName", data.name);
+                    window.location.href = window.location.pathname + '?goodMsg=Successfully Updated!';
+                })
+                .catch(() => {
+                    window.location.href = window.location.pathname + '?errMsg=Unable to Update.';
+                });
+        }
 
-                        if (password !== repassword) {
-                            alert("Passwords do not match. Please key again.");
-                            return;
-                        }
+        // ---------------- Loyalty Program ---------------- //
+        function populateLoyaltyProgram(member) {
+            var loyaltyPoints = member.loyaltyPoints || 0;
+            var cumulativeSpending = member.cumulativeSpending || 0;
+            var loyaltyTierId = member.loyaltyTierId || 15;
 
-                        if (password === oldPassword) {
-                            alert("New password must be different from current password.");
-                            return;
-                        }
+            var tierInfo = getLoyaltyTierInfo(loyaltyTierId);
+            var progress = calculateProgressToNextTier(cumulativeSpending, tierInfo);
 
-                        // Verify old password via API
-                        const verifyResponse = await fetch('/api/verifyPassword', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: 'Bearer ' + authToken
-                            },
-                            body: JSON.stringify({ id: member.id, password: oldPassword })
-                        });
+            var loyaltyHTML = `
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-body" style="background: #CC3B33; color: white; border-radius: 10px; padding: 30px; border-top: 5px solid #a32f28;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h3 style="margin-top:0; color:white;"><i class="icon icon-star"></i> Your Loyalty Status</h3>
+                            <p><strong>Current Tier:</strong> ${tierInfo.name}</p>
+                            <p><strong>Loyalty Points:</strong> ${loyaltyPoints}</p>
+                            <p><strong>Total Spending:</strong> $${cumulativeSpending.toFixed(2)}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h3 style="margin-top:0; color:white;"><i class="icon icon-gift"></i> Your Benefits</h3>
+                            <ul style="color:white; padding-left:20px;">
+                                ${tierInfo.benefits.map(b => `<li>${b}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row" style="margin-top:20px;">
+        <div class="col-md-12">
+            <h4 style="color:#333;">Progress to Next Tier</h4>
+            <div class="progress" style="height:30px; background:#e0e0e0;">
+                <div class="progress-bar progress-bar-danger" role="progressbar" style="width:${progress.percentage}%; background:#CC3B33; color:white; text-align:center;">
+                    ${progress.percentage}%
+                </div>
+            </div>
+            <p style="color:#333;">${progress.message}</p>
+        </div>
+    </div>
+`;
+            document.getElementById("loyaltyProgramTab").innerHTML = loyaltyHTML;
+        }
 
-                        const verifyResult = await verifyResponse.json();
+        function getLoyaltyTierInfo(tierId) {
+            const tiers = {
+                15: { name: 'Bronze', minSpending: 0, maxSpending: 999, benefits: ['Earn 1 point per $1 spent', '5% discount on birthday month', 'Access to member-only promotions'] },
+                16: { name: 'Silver', minSpending: 1000, maxSpending: 4999, benefits: ['Earn 1.5 points per $1 spent', '10% discount on birthday month', 'Free delivery on orders over $200', 'Priority email support'] },
+                17: { name: 'Gold', minSpending: 5000, maxSpending: 9999, benefits: ['Earn 2 points per $1 spent', '15% discount on birthday month', 'Free delivery on all orders', 'Priority customer support', 'Quarterly exclusive offers'] },
+                18: { name: 'Platinum', minSpending: 10000, maxSpending: 999999, benefits: ['Earn 3 points per $1 spent', '20% discount on birthday month', 'Free delivery + free assembly', 'VIP customer support hotline', 'Exclusive early access to new products', 'Invitation to VIP events'] }
+            };
+            return tiers[tierId] || tiers[15];
+        }
 
-                        if (!verifyResult.success) {
-                            alert("Old password is incorrect.");
-                            return;
-                        }
-                    }
+        function calculateProgressToNextTier(currentSpending, currentTier) {
+            let nextThreshold, tierName;
+            if (currentSpending < 1000) { nextThreshold = 1000; tierName = 'Silver'; }
+            else if (currentSpending < 5000) { nextThreshold = 5000; tierName = 'Gold'; }
+            else if (currentSpending < 10000) { nextThreshold = 10000; tierName = 'Platinum'; }
 
-                    // ===============================
-                    // PROFILE VALIDATION
-                    // ===============================
-                    // Only enforce profile form validity if profile fields are being updated
-                    if (!changingPassword && !document.getElementById("profileForm").checkValidity()) {
+            if (nextThreshold) {
+                let remaining = nextThreshold - currentSpending;
+                let progress = ((currentSpending - currentTier.minSpending) / (nextThreshold - currentTier.minSpending)) * 100;
+                return { percentage: Math.min(Math.round(progress), 100), message: `Spend $${remaining.toFixed(2)} more to reach ${tierName} tier!` };
+            } else {
+                return { percentage: 100, message: 'Congratulations! You have reached the highest tier - Platinum!' };
+            }
+        }
+
+        // ---------------- Sales History ---------------- //
+        function loadBoughtItems() {
+            fetch('/api/getBoughtItem/' + member.id, { method: 'GET', headers: { Authorization: 'Bearer ' + authToken } })
+                .then(res => res.json())
+                .then(items => {
+                    if (!items || items.length === 0) {
+                        document.getElementById("salesHistoryTab").innerHTML = '<h5 class="center">You do not have any sales history.</h5>';
                         return;
                     }
 
-                    // ===============================
-                    // BUILD UPDATE PAYLOAD
-                    // ===============================
-                    var data = {
-                        email: document.getElementById("email").value,
-                        name: document.getElementById("name").value,
-                        phone: document.getElementById("phone").value,
-                        country: document.getElementById("country").value,
-                        address: document.getElementById("address").value,
-                        securityQuestion: document.getElementById("securityQuestion").value,
-                        securityAnswer: document.getElementById("securityAnswer").value,
-                        sla: document.getElementById("serviceLevelAgreement").checked ? 1 : 0
-                    };
+                    let html = '', orderIds = [...new Set(items.map(i => i.id))], overallPrice = 0;
 
-                    var age = document.getElementById("age").value;
-                    if (age !== "") data.age = age;
+                    orderIds.sort((a, b) => a - b);
 
-                    var income = document.getElementById("income").value;
-                    if (income !== "") data.income = income;
+                    orderIds.forEach((orderId, index) => {
+                        let orderItems = items.filter(i => i.id === orderId);
+                        let finalPrice = 0;
+                        html += `<h5>Order #${index + 1}</h5>`;
 
-                    if (changingPassword) {
-                        data.password = password;
-                    }
+                        let item0 = orderItems[0];
+                        let options = { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" };
+                        let datePurchased = (new Date(item0.createddate)).toLocaleTimeString('en-us', options);
+                        let deliveryDate = addWorkDays(new Date(item0.createddate), 5);
+                        html += `<h6>Date Purchased: ${datePurchased}</h6>
+                     <h6>Estimated Delivery Date: ${deliveryDate}</h6>
+                     <h6>Delivery Details:</h6>
+                     <h6>Address: ${item0.address}</h6>
+                     <h6>Postal Code: ${item0.postalCode}</h6>
+                     <h6>Name: ${item0.customerName}</h6>
+                     <h6>Contact Number: ${item0.phone}</h6>`;
 
-                    // ===============================
-                    // SEND UPDATE REQUEST
-                    // ===============================
-                    fetch('/api/updateMember', {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: 'Bearer ' + authToken
-                        },
-                        body: JSON.stringify(data)
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            // Update session storage
-                            sessionStorage.setItem("member", JSON.stringify(data));
-                            sessionStorage.setItem("memberEmail", data.email);
-                            sessionStorage.setItem("memberName", data.name);
-                            window.location.href = window.location.pathname + '?goodMsg=Successfully Updated!';
-                        })
-                        .catch(() => {
-                            window.location.href = window.location.pathname + '?errMsg=Unable to Update.';
+                        html += `<table class="shop_table cart"><thead>
+                    <tr><th>Image</th><th>Product</th><th>Price</th><th>Qty</th><th>Subtotal</th></tr>
+                    </thead><tbody>`;
+
+                        orderItems.forEach(p => {
+                            let subtotal = (p.retailPrice * p.quantity).toFixed(2);
+                            finalPrice += parseFloat(subtotal);
+                            overallPrice += parseFloat(subtotal);
+                            html += `<tr>
+                    <td><img width="100" src="${p.imageUrl}"></td>
+                    <td>${p.itemName}</td>
+                    <td>$${p.retailPrice.toFixed(2)}</td>
+                    <td>${p.quantity}</td>
+                    <td>$${subtotal}</td>
+                </tr>`;
                         });
+
+                        html += `<tr><td colspan="4" style="font-weight:bold; color:#cc3b33">Total:</td>
+                     <td style="font-weight:bold">$${finalPrice.toFixed(2)}</td></tr>`;
+                        html += `</tbody></table>`;
+                    });
+
+                    html += `<h4 style="padding-left:20px; font-weight:bold">Total Amount Spent: $${overallPrice.toFixed(2)}</h4>`;
+                    document.getElementById("salesHistoryTab").innerHTML = html;
+                })
+                .catch(console.log);
+        }
+
+        // Helper to add workdays
+        function addWorkDays(startDate, days) {
+            let date = new Date(startDate.getTime());
+            while (days > 0) {
+                date.setDate(date.getDate() + 1);
+                let day = date.getDay();
+                if (day !== 0 && day !== 6) days--;
+            }
+            return date.toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        async function submitForm() {
+            var oldPassword = document.getElementById('oldPassword').value;
+            var password = document.getElementById("password").value;
+            var repassword = document.getElementById("repassword").value;
+
+            // Detect if user is trying to change password
+            var changingPassword =
+                oldPassword !== "" ||
+                password !== "" ||
+                repassword !== "";
+
+            // ===============================
+            // PASSWORD VALIDATION (ONLY IF USED)
+            // ===============================
+            if (changingPassword) {
+
+                if (oldPassword === "") {
+                    alert("Please enter current password.");
+                    return;
                 }
+
+                if (password === "") {
+                    alert("Please enter new password.");
+                    return;
+                }
+
+                if (repassword === "") {
+                    alert("Please re-enter new password.");
+                    return;
+                }
+
+                if (password.length < 8) {
+                    alert("Passwords too short. At least 8 characters.");
+                    return;
+                }
+
+                if (password !== repassword) {
+                    alert("Passwords do not match. Please key again.");
+                    return;
+                }
+
+                if (password === oldPassword) {
+                    alert("New password must be different from current password.");
+                    return;
+                }
+
+                // Verify old password via API
+                const verifyResponse = await fetch('/api/verifyPassword', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ id: member.id, password: oldPassword })
+                });
+
+                const verifyResult = await verifyResponse.json();
+
+                if (!verifyResult.success) {
+                    alert("Old password is incorrect.");
+                    return;
+                }
+            }
+
+            // ===============================
+            // PROFILE VALIDATION
+            // ===============================
+            // Only enforce profile form validity if profile fields are being updated
+            if (!changingPassword && !document.getElementById("profileForm").checkValidity()) {
+                return;
+            }
+
+            // ===============================
+            // BUILD UPDATE PAYLOAD
+            // ===============================
+            var data = {
+                email: document.getElementById("email").value,
+                name: document.getElementById("name").value,
+                phone: document.getElementById("phone").value,
+                country: document.getElementById("country").value,
+                address: document.getElementById("address").value,
+                securityQuestion: document.getElementById("securityQuestion").value,
+                securityAnswer: document.getElementById("securityAnswer").value,
+                sla: document.getElementById("serviceLevelAgreement").checked ? 1 : 0
+            };
+
+            var age = document.getElementById("age").value;
+            if (age !== "") data.age = age;
+
+            var income = document.getElementById("income").value;
+            if (income !== "") data.income = income;
+
+            if (changingPassword) {
+                data.password = password;
+            }
+
+            // ===============================
+            // SEND UPDATE REQUEST
+            // ===============================
+            fetch('/api/updateMember', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + authToken
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Update session storage
+                    sessionStorage.setItem("member", JSON.stringify(data));
+                    sessionStorage.setItem("memberEmail", data.email);
+                    sessionStorage.setItem("memberName", data.name);
+                    window.location.href = window.location.pathname + '?goodMsg=Successfully Updated!';
+                })
+                .catch(() => {
+                    window.location.href = window.location.pathname + '?errMsg=Unable to Update.';
+                });
+        }
         function pdpaWindow() {
             var myWindow = window.open("pdpa.html");
         }
@@ -717,24 +766,29 @@
                                             <div class="form-group">
                                                 <input type="submit" onclick="submitForm()" value="Submit"
                                                     class="btn btn-primary" />
-                                                <input type="button" value="Reset" class="btn btn-primary" onclick="resetProfile()"/>
+                                                <input type="button" value="Reset" class="btn btn-primary"
+                                                    onclick="resetProfile()" />
                                             </div>
                                         </div>
                                     </div>
                                 </form>
                             </div>
+
                             <div id="loyaltyProgram" class="tab-pane">
                                 <h4>Loyalty Program</h4>
+                                <div id="loyaltyProgramTab"></div>
                             </div>
                             <div id="salesHistory" class="tab-pane">
                                 <h4>Sales History</h4>
                                 <div id="salesHistoryTab"></div>
                             </div>
+
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
     </div>
     </div>
     <script src="../footer.js"></script>
