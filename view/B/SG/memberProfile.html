@@ -66,6 +66,9 @@
                         document.getElementById("serviceLevelAgreement").checked = true;
                     }
                     
+                    // ✅ NEW: POPULATE LOYALTY PROGRAM DATA
+                    populateLoyaltyProgram(member);
+                    
                     // Now fetch bought items
                     loadBoughtItems();
                     
@@ -74,160 +77,355 @@
                 });
             }, false);
             
+            // ✅ NEW: Function to populate loyalty program information
+            function populateLoyaltyProgram(member) {
+                var loyaltyPoints = member.loyaltyPoints || 0;
+                var cumulativeSpending = member.cumulativeSpending || 0;
+                var loyaltyTierId = member.loyaltyTierId || 15;
+                
+                // Determine tier name and benefits based on loyaltyTierId
+                var tierInfo = getLoyaltyTierInfo(loyaltyTierId);
+                var progressToNextTier = calculateProgressToNextTier(cumulativeSpending, tierInfo);
+                
+                var loyaltyHTML = `
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="panel panel-default">
+                                <div class="panel-body" style="background: #CC3B33; color: white; border-radius: 10px; padding: 30px; border-top: 5px solid #a32f28;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h3 style="margin-top: 0; color: white;">
+                                                <i class="icon icon-star"></i> Your Loyalty Status
+                                            </h3>
+                                            <div style="font-size: 18px; margin-top: 20px; color: white;">
+                                                <p style="color: white";><strong>Current Tier:</strong> <span style="font-size: 24px; color: white;">${tierInfo.name}</span></p>
+                                                <p style="color: white";><strong>Loyalty Points:</strong> <span style="font-size: 24px; color: white;">${loyaltyPoints}</span></p>
+                                                <p style="color: white";><strong>Total Spending:</strong> <span style="font-size: 24px; color: white; ">$${cumulativeSpending.toFixed(2)}</span></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h3 style="margin-top: 0; color: white;">
+                                                <i class="icon icon-gift"></i> Your Benefits
+                                            </h3>
+                                            <ul style="font-size: 16px; margin-top: 20px; list-style: none; padding-left: 0;">
+                                                ${tierInfo.benefits.map(benefit => `<li style="margin-bottom: 10px;"><i class="icon icon-check" style="color: white;"></i> ${benefit}</li>`).join('')}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row" style="margin-top: 20px;">
+                        <div class="col-md-12">
+                            <h4><i class="icon icon-road"></i> Progress to Next Tier</h4>
+                            <div class="progress" style="height: 30px; background-color: #e0e0e0;">
+                                <div class="progress-bar progress-bar-danger" role="progressbar" 
+                                     style="width: ${progressToNextTier.percentage}%; background-color: #CC3B33;">
+                                    <span style="font-size: 14px; line-height: 30px; color: white;">${progressToNextTier.percentage}%</span>
+                                </div>
+                            </div>
+                            <p style="margin-top: 10px;">
+                                ${progressToNextTier.message}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row" style="margin-top: 30px;">
+                        <div class="col-md-12">
+                            <h4><i class="icon icon-trophy"></i> All Loyalty Tiers</h4>
+                            <table class="table table-bordered" style="margin-top: 15px;">
+                                <thead>
+                                    <tr style="background-color: #CC3B33; color: white;">
+                                        <th>Tier</th>
+                                        <th>Spending Required</th>
+                                        <th>Benefits</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ${loyaltyTierId === 15 ? 'style="background-color: #fff5f5;"' : ''}>
+                                        <td><strong>Bronze</strong> ${loyaltyTierId === 15 ? '<span class="label label-danger">Your Tier</span>' : ''}</td>
+                                        <td>$0 - $999</td>
+                                        <td>• 1 point per $1 spent<br>• 5% discount on birthday</td>
+                                    </tr>
+                                    <tr ${loyaltyTierId === 16 ? 'style="background-color: #fff5f5;"' : ''}>
+                                        <td><strong>Silver</strong> ${loyaltyTierId === 16 ? '<span class="label label-danger">Your Tier</span>' : ''}</td>
+                                        <td>$1,000 - $4,999</td>
+                                        <td>• 1.5 points per $1 spent<br>• 10% discount on birthday<br>• Free delivery on orders over $200</td>
+                                    </tr>
+                                    <tr ${loyaltyTierId === 17 ? 'style="background-color: #fff5f5;"' : ''}>
+                                        <td><strong>Gold</strong> ${loyaltyTierId === 17 ? '<span class="label label-danger">Your Tier</span>' : ''}</td>
+                                        <td>$5,000 - $9,999</td>
+                                        <td>• 2 points per $1 spent<br>• 15% discount on birthday<br>• Free delivery on all orders<br>• Priority customer support</td>
+                                    </tr>
+                                    <tr ${loyaltyTierId === 18 ? 'style="background-color: #fff5f5;"' : ''}>
+                                        <td><strong>Platinum</strong> ${loyaltyTierId === 18 ? '<span class="label label-danger">Your Tier</span>' : ''}</td>
+                                        <td>$10,000+</td>
+                                        <td>• 3 points per $1 spent<br>• 20% discount on birthday<br>• Free delivery + assembly on all orders<br>• VIP customer support<br>• Exclusive early access to new products</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row" style="margin-top: 30px;">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <h4><i class="icon icon-info-circle"></i> How to Earn Points</h4>
+                                <p>• Earn loyalty points with every purchase based on your tier level</p>
+                                <p>• Points can be redeemed for discounts on future purchases (100 points = $10 off)</p>
+                                <p>• Your tier is determined by your total cumulative spending</p>
+                                <p>• Tier benefits are automatically applied to your account</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById("loyaltyProgramTab").innerHTML = loyaltyHTML;
+            }
+            
+            // ✅ NEW: Function to get tier information
+            function getLoyaltyTierInfo(tierId) {
+                var tiers = {
+                    15: { // Bronze
+                        name: 'Bronze',
+                        minSpending: 0,
+                        maxSpending: 999,
+                        benefits: [
+                            'Earn 1 point per $1 spent',
+                            '5% discount on birthday month',
+                            'Access to member-only promotions'
+                        ]
+                    },
+                    16: { // Silver
+                        name: 'Silver',
+                        minSpending: 1000,
+                        maxSpending: 4999,
+                        benefits: [
+                            'Earn 1.5 points per $1 spent',
+                            '10% discount on birthday month',
+                            'Free delivery on orders over $200',
+                            'Priority email support'
+                        ]
+                    },
+                    17: { // Gold
+                        name: 'Gold',
+                        minSpending: 5000,
+                        maxSpending: 9999,
+                        benefits: [
+                            'Earn 2 points per $1 spent',
+                            '15% discount on birthday month',
+                            'Free delivery on all orders',
+                            'Priority customer support',
+                            'Quarterly exclusive offers'
+                        ]
+                    },
+                    18: { // Platinum
+                        name: 'Platinum',
+                        minSpending: 10000,
+                        maxSpending: 999999,
+                        benefits: [
+                            'Earn 3 points per $1 spent',
+                            '20% discount on birthday month',
+                            'Free delivery + free assembly',
+                            'VIP customer support hotline',
+                            'Exclusive early access to new products',
+                            'Invitation to VIP events'
+                        ]
+                    }
+                };
+                
+                return tiers[tierId] || tiers[15]; // Default to Bronze if tier not found
+            }
+            
+            // ✅ NEW: Function to calculate progress to next tier
+            function calculateProgressToNextTier(currentSpending, currentTier) {
+                var nextTierThresholds = [1000, 5000, 10000];
+                var nextThreshold = null;
+                var tierName = '';
+                
+                if (currentSpending < 1000) {
+                    nextThreshold = 1000;
+                    tierName = 'Silver';
+                } else if (currentSpending < 5000) {
+                    nextThreshold = 5000;
+                    tierName = 'Gold';
+                } else if (currentSpending < 10000) {
+                    nextThreshold = 10000;
+                    tierName = 'Platinum';
+                }
+                
+                if (nextThreshold) {
+                    var remaining = nextThreshold - currentSpending;
+                    var progress = ((currentSpending - currentTier.minSpending) / (nextThreshold - currentTier.minSpending)) * 100;
+                    return {
+                        percentage: Math.min(Math.round(progress), 100),
+                        message: `Spend $${remaining.toFixed(2)} more to reach ${tierName} tier!`
+                    };
+                } else {
+                    return {
+                        percentage: 100,
+                        message: 'Congratulations! You\'ve reached the highest tier - Platinum!'
+                    };
+                }
+            }
+            
             function loadBoughtItems() {
-    fetch(new Request('/api/getBoughtItem/' + member.id,
-    {
-        method: 'GET',
-        headers: {
-            Authorization: 'Bearer ' + authToken
-        }
-    })).then(function (response) {
-        return response.json();
-    }).then(function (boughtItem) {
-        if(boughtItem == null || boughtItem == '') {
-            document.getElementById("salesHistoryTab").innerHTML = '<h5 class="center">You do not have any sales history.</h5>';
-        }
-        else {
-            var htmlTxt = '';
-            var orderIdList = [];
-            var overallPrice = 0;
-            
-            // Get all order IDs
-            for (i = 0; i < boughtItem.length; i++) {
-                orderIdList[i] = boughtItem[i].id;
-            }
-            
-            // Remove duplicates
-            orderIdList = [...new Set(orderIdList)];
-            
-            // Sort order IDs in ascending order
-            var temp;
-            var size = orderIdList.length;
-            for (i = 0; i < size - 1; i++) {
-                for (j = 0; j < size - i - 1; j++) {
-                    if (orderIdList[j] > orderIdList[j+1]) {
-                        temp = orderIdList[j];
-                        orderIdList[j] = orderIdList[j+1];
-                        orderIdList[j+1] = temp;
+                fetch(new Request('/api/getBoughtItem/' + member.id,
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
                     }
-                }
-            }
-            
-            // ✅ FIX: Loop through ALL orders instead of just orderIdList[0]
-            for (var orderIndex = 0; orderIndex < orderIdList.length; orderIndex++) {
-                var finalPrice = 0;
-                var counter = 0;
-                var currentOrderId = orderIdList[orderIndex];
-                
-                htmlTxt += '<h5>Order #' + (orderIndex + 1) + '</h5>';
-                
-                // Display order header info (date, delivery details)
-                for (j = 0; j < boughtItem.length; j++) {
-                    if(boughtItem[j].id == currentOrderId) {
-                        var item = boughtItem[j];
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (boughtItem) {
+                    if(boughtItem == null || boughtItem == '') {
+                        document.getElementById("salesHistoryTab").innerHTML = '<h5 class="center">You do not have any sales history.</h5>';
+                    }
+                    else {
+                        var htmlTxt = '';
+                        var orderIdList = [];
+                        var overallPrice = 0;
                         
-                        // Display top level info only once per order
-                        if(counter == 0) {
-                            let options = {
-                                weekday: "long", year: "numeric", month: "long",  
-                                day: "numeric", hour: "2-digit", minute: "2-digit"  
-                            };
-                            var datePurchased = (new Date(item.createddate)).toLocaleTimeString('en-us', options);
-                            var deliveryDate = addWorkDays(new Date(item.createddate), 5);
-                            htmlTxt += '\
-                                <h6>Date Purchased: ' + datePurchased + '</h6>\
-                                <h6>Estimated Delivery Date: ' + deliveryDate + '</h6>\
-                                <h6 style="text-decoration:underline; font-weight:bold">Delivery Details:</h6>\
-                                <h6>Address: ' + item.address + '</h6>\
-                                <h6>Postal Code: ' + item.postalCode + '</h6>\
-                                <h6>Name: ' + item.customerName + '</h6>\
-                                <h6>Contact Number: ' + item.phone + '</h6>';
-                            counter++;
+                        // Get all order IDs
+                        for (i = 0; i < boughtItem.length; i++) {
+                            orderIdList[i] = boughtItem[i].id;
                         }
-                    }
-                }
-                
-                // Display table with items for this order
-                htmlTxt += '\
-                    <div class="row">\
-                        <div class="col-md-12">\
-                            <div class="row featured-boxes">\
-                                <div class="col-md-12">\
-                                    <div class="featured-box featured-box-secundary featured-box-cart">\
-                                        <div class="box-content">\
-                                            <table cellspacing="0" class="shop_table cart">\
-                                                <thead>\
-                                                    <tr>\
-                                                        <th class="product-thumbnail" style="width: 25%">Image</th>\
-                                                        <th class="product-name" style="width: 38%">Product</th>\
-                                                        <th class="product-price" style="width: 15%">Price</th>\
-                                                        <th class="product-quantity" style="width: 15%">Quantity</th>\
-                                                        <th class="product-subtotal" style="width: 15%">Subtotal</th>\
-                                                    </tr>\
-                                                </thead>\
-                                                <tbody>';
-                
-                // Add all items for this order
-                for (y = 0; y < boughtItem.length; y++) {
-                    if (boughtItem[y].id == currentOrderId) {
-                        var product = boughtItem[y];
-                        var subtotal = product.retailPrice.toFixed(2) * product.quantity;
                         
-                        htmlTxt += '\
-                            <tr class="cart_table_item">\
-                                <td class="product-thumbnail">\
-                                    <a href="/B/' + countryPrefix + '/furnitureProductDetails.html?sku=' + product.sku + '">\
-                                        <img width="100" height="100" alt="" class="img-responsive" src="' + product.imageUrl + '">\
-                                    </a>\
-                                </td>\
-                                <td class="product-name">\
-                                    <a class="productDetails" href="/B/' + countryPrefix + '/furnitureProductDetails.html?sku=' + product.sku + '">' + product.itemName + '</a>\
-                                </td>\
-                                <td class="product-price">\
-                                    $<span class="amount">' + product.retailPrice.toFixed(2) + '</span>\
-                                </td>\
-                                <td class="product-quantity">\
-                                    <span class="qty">' + product.quantity + '</span>\
-                                </td>\
-                                <td class="product-subtotal">\
-                                    $<span class="amount">' + subtotal + '</span>\
-                                </td>\
-                            </tr>';
+                        // Remove duplicates
+                        orderIdList = [...new Set(orderIdList)];
                         
-                        finalPrice += parseFloat(subtotal);
-                        overallPrice += parseFloat(subtotal);
-                    }
-                }
-                
-                // Close table and show order total
-                htmlTxt += '\
-                                    <tr>\
-                                        <td></td>\
-                                        <td></td>\
-                                        <td></td>\
-                                        <td class="product-subtotal" style="font-weight: bold; color: #cc3b33">Total:</td>\
-                                        <td class="product-subtotal" style="font-weight: bold">\
-                                            $<span class="amount">' + finalPrice.toFixed(2) + '</span>\
-                                        </td>\
-                                    </tr>\
-                                </tbody>\
-                            </table>\
-                        </div>\
-                    </div>\
-                </div>\
+                        // Sort order IDs in ascending order
+                        var temp;
+                        var size = orderIdList.length;
+                        for (i = 0; i < size - 1; i++) {
+                            for (j = 0; j < size - i - 1; j++) {
+                                if (orderIdList[j] > orderIdList[j+1]) {
+                                    temp = orderIdList[j];
+                                    orderIdList[j] = orderIdList[j+1];
+                                    orderIdList[j+1] = temp;
+                                }
+                            }
+                        }
+                        
+                        // ✅ FIX: Loop through ALL orders instead of just orderIdList[0]
+                        for (var orderIndex = 0; orderIndex < orderIdList.length; orderIndex++) {
+                            var finalPrice = 0;
+                            var counter = 0;
+                            var currentOrderId = orderIdList[orderIndex];
+                            
+                            htmlTxt += '<h5>Order #' + (orderIndex + 1) + '</h5>';
+                            
+                            // Display order header info (date, delivery details)
+                            for (j = 0; j < boughtItem.length; j++) {
+                                if(boughtItem[j].id == currentOrderId) {
+                                    var item = boughtItem[j];
+                                    
+                                    // Display top level info only once per order
+                                    if(counter == 0) {
+                                        let options = {
+                                            weekday: "long", year: "numeric", month: "long",  
+                                            day: "numeric", hour: "2-digit", minute: "2-digit"  
+                                        };
+                                        var datePurchased = (new Date(item.createddate)).toLocaleTimeString('en-us', options);
+                                        var deliveryDate = addWorkDays(new Date(item.createddate), 5);
+                                        htmlTxt += '\
+                                            <h6>Date Purchased: ' + datePurchased + '</h6>\
+                                            <h6>Estimated Delivery Date: ' + deliveryDate + '</h6>\
+                                            <h6 style="text-decoration:underline; font-weight:bold">Delivery Details:</h6>\
+                                            <h6>Address: ' + item.address + '</h6>\
+                                            <h6>Postal Code: ' + item.postalCode + '</h6>\
+                                            <h6>Name: ' + item.customerName + '</h6>\
+                                            <h6>Contact Number: ' + item.phone + '</h6>';
+                                        counter++;
+                                    }
+                                }
+                            }
+                            
+                            // Display table with items for this order
+                            htmlTxt += '\
+                                <div class="row">\
+                                    <div class="col-md-12">\
+                                        <div class="row featured-boxes">\
+                                            <div class="col-md-12">\
+                                                <div class="featured-box featured-box-secundary featured-box-cart">\
+                                                    <div class="box-content">\
+                                                        <table cellspacing="0" class="shop_table cart">\
+                                                            <thead>\
+                                                                <tr>\
+                                                                    <th class="product-thumbnail" style="width: 25%">Image</th>\
+                                                                    <th class="product-name" style="width: 38%">Product</th>\
+                                                                    <th class="product-price" style="width: 15%">Price</th>\
+                                                                    <th class="product-quantity" style="width: 15%">Quantity</th>\
+                                                                    <th class="product-subtotal" style="width: 15%">Subtotal</th>\
+                                                                </tr>\
+                                                            </thead>\
+                                                            <tbody>';
+                            
+                            // Add all items for this order
+                            for (y = 0; y < boughtItem.length; y++) {
+                                if (boughtItem[y].id == currentOrderId) {
+                                    var product = boughtItem[y];
+                                    var subtotal = product.retailPrice.toFixed(2) * product.quantity;
+                                    
+                                    htmlTxt += '\
+                                        <tr class="cart_table_item">\
+                                            <td class="product-thumbnail">\
+                                                <a href="/B/' + countryPrefix + '/furnitureProductDetails.html?sku=' + product.sku + '">\
+                                                    <img width="100" height="100" alt="" class="img-responsive" src="' + product.imageUrl + '">\
+                                                </a>\
+                                            </td>\
+                                            <td class="product-name">\
+                                                <a class="productDetails" href="/B/' + countryPrefix + '/furnitureProductDetails.html?sku=' + product.sku + '">' + product.itemName + '</a>\
+                                            </td>\
+                                            <td class="product-price">\
+                                                $<span class="amount">' + product.retailPrice.toFixed(2) + '</span>\
+                                            </td>\
+                                            <td class="product-quantity">\
+                                                <span class="qty">' + product.quantity + '</span>\
+                                            </td>\
+                                            <td class="product-subtotal">\
+                                                $<span class="amount">' + subtotal + '</span>\
+                                            </td>\
+                                        </tr>';
+                                    
+                                    finalPrice += parseFloat(subtotal);
+                                    overallPrice += parseFloat(subtotal);
+                                }
+                            }
+                            
+                            // Close table and show order total
+                            htmlTxt += '\
+                                                <tr>\
+                                                    <td></td>\
+                                                    <td></td>\
+                                                    <td></td>\
+                                                    <td class="product-subtotal" style="font-weight: bold; color: #cc3b33">Total:</td>\
+                                                    <td class="product-subtotal" style="font-weight: bold">\
+                                                        $<span class="amount">' + finalPrice.toFixed(2) + '</span>\
+                                                    </td>\
+                                                </tr>\
+                                            </tbody>\
+                                        </table>\
+                                    </div>\
+                                </div>\
                             </div>\
-                        </div>\
-                    </div>';
-            } // End of order loop
+                                        </div>\
+                                    </div>\
+                                </div>';
+                        } // End of order loop
+                        
+                        // Show total amount spent across all orders
+                        htmlTxt += '<h4 style="font-weight: bold; padding-left: 20px">Total Amount Spent: $'+ overallPrice.toFixed(2) + '</h4>';
+                        document.getElementById("salesHistoryTab").innerHTML = htmlTxt;
+                    }
+                }).catch(function(error) {
+                    console.log(error);
+                });
+            }
             
-            // Show total amount spent across all orders
-            htmlTxt += '<h4 style="font-weight: bold; padding-left: 20px">Total Amount Spent: $'+ overallPrice.toFixed(2) + '</h4>';
-            document.getElementById("salesHistoryTab").innerHTML = htmlTxt;
-        }
-    }).catch(function(error) {
-        console.log(error);
-    });
-}
             function addWorkDays(startDate, days) {
                 var dow = startDate.getDay();
                 var daysToAdd = parseInt(days);
@@ -361,10 +559,10 @@
                                     <a href="#overview" data-toggle="tab"><i class="icon icon-user"></i> Overview</a>
                                 </li>
                                 <li>
-                                    <a href="#loyaltyProgram" data-toggle="tab">Loyalty Program</a>
+                                    <a href="#loyaltyProgram" data-toggle="tab"><i class="icon icon-star"></i> Loyalty Program</a>
                                 </li>
                                 <li>
-                                    <a href="#salesHistory" data-toggle="tab">Sales History</a>
+                                    <a href="#salesHistory" data-toggle="tab"><i class="icon icon-shopping-cart"></i> Sales History</a>
                                 </li>
                             </ul>
                             <div class="tab-content">
@@ -689,6 +887,7 @@
                                 </div>
                                 <div id="loyaltyProgram" class="tab-pane">
                                     <h4>Loyalty Program</h4>
+                                    <div id="loyaltyProgramTab"></div>
                                 </div>
                                 <div id="salesHistory" class="tab-pane">
                                     <h4>Sales History</h4>

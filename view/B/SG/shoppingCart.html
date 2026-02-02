@@ -31,12 +31,12 @@
             var member = null;
             var memberEmail = null;
             var qtyValid = true;
-            var shoppingCart = JSON.parse(sessionStorage.getItem('shoppingCart'));
+            var shoppingCart = JSON.parse(localStorage.getItem('shoppingCart'));
             var finalPrice = 0;
             var stripeCustomer = null;
             var cardId = null;
             document.addEventListener('DOMContentLoaded', function(){
-                memberEmail = sessionStorage.getItem('memberEmail');
+                memberEmail = localStorage.getItem('memberEmail');
                 //disable checkout button is shopping cart is empty
                 if(shoppingCart == null || shoppingCart == '') {
                     document.getElementById('btmDiv').innerHTML = '<div align="right" style="cursor: not-allowed;"><a><button disabled="true" class="btn btn-primary btn-lg">Check Out</button></a></div>';
@@ -278,7 +278,7 @@
                             }
                         }
                     }
-                    sessionStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+                    localStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
                     window.location.href = '/B/' + countryPrefix + '/shoppingCart.html?goodMsg=Successfully removed!';
                 }
             }
@@ -304,7 +304,7 @@
                         }
                     }
                 }
-                sessionStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+                localStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
                 window.location.href = '/B/' + countryPrefix + '/shoppingCart.html?goodMsg=Successfully removed!';
             }
 
@@ -330,7 +330,7 @@
                         }
                     }
                     if (allOk) {
-                        sessionStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+                        localStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
                         window.location.href = '/B/' + countryPrefix + '/shoppingCart.html?goodMsg=Successfully Added!';
                     }
                 }).catch(function(error) {
@@ -428,14 +428,14 @@
                         return response.json();
                     }).then(async function (data) {
                         //update member's info in the session storage
-                        sessionStorage.setItem("member", JSON.stringify(data));
-                        sessionStorage.setItem("memberEmail", data.email);
-                        sessionStorage.setItem("memberName", data.name);
+                        localStorage.setItem("member", JSON.stringify(data));
+                        localStorage.setItem("memberEmail", data.email);
+                        localStorage.setItem("memberName", data.name);
 
 
                         var ok = await insertRecords(salesRecord);
                         if(ok) {
-                            sessionStorage.removeItem("shoppingCart");
+                            localStorage.removeItem("shoppingCart");
                             var url = window.location.origin + window.location.pathname;
                             window.location.href = url + '?goodMsg=Successfully Paid';
                         }
@@ -446,7 +446,7 @@
                 else {
                     var ok = await insertRecords(salesRecord);
                     if(ok) {
-                        sessionStorage.removeItem("shoppingCart");
+                        localStorage.removeItem("shoppingCart");
                         var url = window.location.origin + window.location.pathname;
                         window.location.href = url + '?goodMsg=Successfully Paid';
                     }

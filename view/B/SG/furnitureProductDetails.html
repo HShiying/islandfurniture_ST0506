@@ -7,7 +7,7 @@ a<script src="../checkCountry.js" ></script>
             //get sku from query parameter
             var currentUrl = new URL(window.location.href);
             var sku = currentUrl.searchParams.get("sku");
-            var memberEmail = sessionStorage.getItem('memberEmail');
+            var memberEmail = localStorage.getItem('memberEmail');
             if(sku == null || sku == '') {
                 window.location.href = '/B/' + countryPrefix + '/index.html';
             }
@@ -77,7 +77,7 @@ a<script src="../checkCountry.js" ></script>
                     }
                     else {
                         var allOk = true;
-                        var shoppingCart = JSON.parse(sessionStorage.getItem('shoppingCart'));
+                        var shoppingCart = JSON.parse(localStorage.getItem('shoppingCart'));
                         //if shopping cart is empty
                         if(shoppingCart == null || shoppingCart == '') {
                             shoppingCart = [];
@@ -121,7 +121,7 @@ a<script src="../checkCountry.js" ></script>
                             }
                         }
                         if (allOk) {
-                            sessionStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+                            localStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
                             var url = window.location.origin + window.location.pathname;
                             window.location.href = url + '?sku=' + sku + '&goodMsg=Successfully added!';
                         }
